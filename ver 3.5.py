@@ -332,7 +332,6 @@ class MainWindow(QMainWindow):
 
             pyo.plot(fig, filename='plotly.html', auto_open=True)
 
-            # fig = go.Figure(data=[go.Scatter(x=self.data['x'], y=se
 
     # Функция для визуализации данных с помощью библиотеки Bokeh
     def plot_bokeh(self):
@@ -354,17 +353,7 @@ class MainWindow(QMainWindow):
                        fill_color=linear_cmap('counts', 'Viridis256', 0, max(bins.counts)))
 
             show(p)
-            # output_file("bokeh_plot.html")
-            # p = figure(title="График с помощью Bokeh", x_axis_label='x', y_axis_label='y')
-            # p.line(self.data['x'], self.data['y'], legend_label="y=x^2", line_width=2)
-            # show(p)
-            # # Построение интерактивного графика
-            # source = ColumnDataSource(self.data)
-            # hover = HoverTool(tooltips=[('x', '@x'), ('y', '@y')])
-            # p = figure(title="Интерактивный график с помощью Bokeh", x_axis_label='x', y_axis_label='y', tools=[hover])
-            # p.line('x', 'y', source=source, legend_label="y=x^2", line_width=2)
-            # show(p)
-
+       
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
