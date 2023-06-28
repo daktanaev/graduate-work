@@ -2,8 +2,6 @@ import sys
 import pandas as pd
 from numpy.random import standard_normal
 import matplotlib.pyplot as plt
-import seaborn as sns
-import altair as alt
 import altair_viewer
 import plotly.graph_objs as go
 import plotly.offline as pyo
@@ -18,13 +16,20 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog, QMessageBox,
     QVBoxLayout, QHBoxLayout, QComboBox, QGroupBox, QWidget
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtGui import QImage
+import seaborn as sns
+import altair as alt
+import plotly.graph_objects as go
+from bokeh.plotting import figure, show
+from bokeh.transform import linear_cmap
+from bokeh.models import HexTile, ColumnDataSource
+
 
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.setWindowTitle("Визуализация данных из Excel")
+        self.setWindowTitle("Визуализация данных")
         self.setGeometry(200, 200, 1000, 600)
 
         # Создание основного виджета
@@ -117,28 +122,29 @@ class MainWindow(QMainWindow):
         # Добавление группы в главный макет
         plot_layout.addWidget(group_seaborn)
 ##################
-        # plot_altair_button = QPushButton("Altair")
-        # plot_altair_button.clicked.connect(self.plot_altair)
-        # plot_layout.addWidget(plot_altair_button)
-        #
-        # # Создание вертикального макета для изображения и кнопки
-        # altair_image_layout = QVBoxLayout()
-        #
-        # # Загрузка изображения для Altair
-        # icon_altair = QPixmap.fromImage(
-        #     QImage(
-        #         'C:\\Users\\Epistaxis\\Pictures\\GameCenter\\AtomicHeart\\1.jpg'))  # замените 'path_to_image' на путь к вашему изображению
-        # label_altair = QLabel()
-        # label_altair.setPixmap(icon_altair.scaled(100, 100, Qt.KeepAspectRatio, Qt.SmoothTransformation))
-        #
-        # # Добавление изображения в вертикальный макет
-        # altair_image_layout.addWidget(label_altair)
-        #
-        # # Добавление кнопки в вертикальный макет
-        # altair_image_layout.addWidget(plot_altair_button)
-        #
-        # # Добавление вертикального макета в главный вертикальный макет
-        # plot_layout.addLayout(altair_image_layout)
+        plot_altair_button = QPushButton("Круговая диаграмма")
+        plot_altair_button.clicked.connect(self.plot_altair)
+        #  plot_layout.addWidget(plot_plotly_button)
+
+        # Создание группы для кнопки plotly и изображения
+        group_altair = QGroupBox("График с помощью Altair")
+        group_altair_layout = QVBoxLayout()
+        group_altair.setLayout(group_altair_layout)
+        group_altair.setMaximumSize(400, 200)
+
+        # Добавление кнопки в группу
+        group_altair_layout.addWidget(plot_altair_button)
+
+        # Загрузка изображения и добавление его в группу
+        icon_altair = QPixmap.fromImage(QImage('C:\\Users\\Epistaxis\\Desktop\\Диплом\\Библиотеки\\altair.png'))
+        label_altair = QLabel()
+        label_altair.setPixmap(icon_altair.scaled(200, 200, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        label_altair.setMinimumSize(100, 100)
+        label_altair.setAlignment(Qt.AlignCenter)
+        group_altair_layout.addWidget(label_altair)
+
+        # Добавление группы в главный макет
+        plot_layout.addWidget(group_altair)
 ######
         plot_plotly_button = QPushButton("3D график")
         plot_plotly_button.clicked.connect(self.plot_plotly)
@@ -196,19 +202,30 @@ class MainWindow(QMainWindow):
 
         self.show()
 
-# Функция для загрузки файла Excel
+# Функция для загрузки файла Excel или CSV
     def browse_file(self):
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
-        file_path, _ = QFileDialog.getOpenFileName(self, "Выберите файл Excel", "", "Excel Files (*.xlsx *.xls)")
+        file_path, _ = QFileDialog.getOpenFileName(self, "Выберите файл", "",
+                                                   "CSV Files (*.csv);;Excel Files (*.xlsx *.xls);;TXT Files(*.txt)")
+
         if file_path:
             self.file_path = file_path
             self.file_line.setText(file_path)
             print('Файл загружен')
 
-            # Получение имен листов
-            self.sheet_names = pd.ExcelFile(self.file_path).sheet_names
-            self.sheet_combo.addItems(self.sheet_names)
+            # Определение типа файла
+            if file_path.endswith('.csv'):
+                # Чтение данных из файла CSV
+                if file_path.endswith('.csv'):
+                    # Чтение данных из файла CSV
+                    self.data = pd.read_csv(file_path)
+            elif file_path.endswith('.txt'):
+                self.data = pd.read_csv(file_path)
+            else:
+                # Чтение данных из файла Excel
+                self.sheet_names = pd.ExcelFile(self.file_path).sheet_names
+                self.sheet_combo.addItems(self.sheet_names)
 
     # Функция для выбора листа
     def select_sheet(self, text):
@@ -227,51 +244,83 @@ class MainWindow(QMainWindow):
         if self.data is not None:
             # Построение графика
             fig, ax = plt.subplots()
-            x = [10, 4, 6, 1]
-            y = [1, 2, 3, 4]
+            #x = [10, 4, 6, 1]
+            #y = [1, 2, 3, 4]
            # ax.plot(x, y)
-            ax.plot(self.data['x'], self.data['y'])
-            #ax.plot(self.data['x'], self.data['y1'])
-            #ax.plot(self.data[1], y)
+            print(self.data.columns)
+
+            x_columns = [column for column in self.data.columns if column.startswith('x')]
+            for x_column in x_columns:
+                y_column = 'y' + x_column[1:]
+                if y_column in self.data.columns:
+                    x = self.data[x_column]
+                    y = self.data[y_column]
+                    ax.plot(x, y, label=f'{x_column}/{y_column}')
+
             ax.set_xlabel('x')
             ax.set_ylabel('y')
-            ax.set_title('График с помощью Matplotlib')
+            ax.set_title('Графики с помощью Matplotlib')
+            ax.legend()
             plt.show()
 
     # Функция для визуализации данных с помощью библиотеки Seaborn
     def plot_seaborn(self):
         if self.data is not None:
-            # Построение графика
-            tips = self.data
-            sns.set(color_codes=True)
-            ax = sns.scatterplot(
-                x="x",
-                y="y",
-                data=tips
-            )
-            #sns.lineplot(x='x', y='y', data=self.data)
-            plt.xlabel('x')
-            plt.ylabel('y')
-            plt.title('График с помощью Seaborn')
-            plt.show()
+            # Построение графиков
+            num_plots = 0
+            for column in self.data.columns:
+                if column.startswith('x') and 'y' + column[1:] in self.data.columns:
+                    num_plots += 1
+
+            if num_plots > 0:
+                num_cols = 2  # Количество столбцов графиков
+                num_rows = (num_plots + num_cols - 1) // num_cols  # Количество строк графиков
+
+                fig, axs = plt.subplots(num_rows, num_cols, figsize=(12, 6))
+
+                plot_index = 0
+                for column in self.data.columns:
+                    if column.startswith('x') and 'y' + column[1:] in self.data.columns:
+                        row_index = plot_index // num_cols
+                        col_index = plot_index % num_cols
+                        ax = axs[row_index, col_index] if num_rows > 1 else axs[col_index]
+
+                        sns.scatterplot(x=column, y='y' + column[1:], data=self.data, ax=ax)
+                        ax.set_xlabel(column)
+                        ax.set_ylabel('y' + column[1:])
+                        ax.set_title(f'График {column}/y{column[1:]} с помощью Seaborn')
+
+                        plot_index += 1
+
+                plt.tight_layout()
+                plt.show()
 
     # Функция для визуализации данных с помощью библиотеки Altair
     def plot_altair(self):
         if self.data is not None:
-            chart = alt.Chart(self.data).mark_line().encode(
-                x='x',
-                y='y'
-            ).interactive()
-            altair_viewer.show(chart)
+            # Построение графиков
+            for column in self.data.columns:
+                if column.startswith('x') and 'y' + column[1:] in self.data.columns:
+                    source = pd.DataFrame({"values": self.data['y' + column[1:]], "labels": self.data[column]})
+
+                    base = alt.Chart(source).mark_arc(innerRadius=20, stroke="#fff").encode(
+                        color=alt.Color("labels:N", legend=alt.Legend(title=None, labelLimit=200)),
+                        theta=alt.Theta("values:Q", stack=True),
+                        radius=alt.Radius("values:Q", scale=alt.Scale(type="sqrt", zero=True, rangeMin=20)),
+                        tooltip=["labels:N", "values:Q"]
+                    )
+
+                    text = base.mark_text(radiusOffset=10).encode(text="labels:N")
+
+                    altair_viewer.show(base + text)  # Устанавливаем более высокое значение dpi
+                    #chart = base + text
+                    #chart.save("chart.png", scale_factor=2)  # Увеличиваем разрешение в два раза
 
     # Функция для визуализации данных с помощью библиотеки Plotly
     def plot_plotly(self):
         if self.data is not None:
             # Построение графика
-            z_data = pd.read_csv(
-                'C:\\Users\\Epistaxis\\Desktop\\Диплом\\Проект\\count.csv')
-
-            fig = go.Figure(data=[go.Surface(z=z_data.values)])
+            fig = go.Figure(data=[go.Surface(z=self.data.values)])
             fig.update_traces(contours_z=dict(show=True, usecolormap=True,
                                               highlightcolor="limegreen", project_z=True))
             fig.update_layout(title='Mt Bruno Elevation', autosize=False,
@@ -279,24 +328,22 @@ class MainWindow(QMainWindow):
                               width=1920, height=1080,
                               margin=dict(l=65, r=50, b=65, t=90)
                               )
+            fig.show()
 
             pyo.plot(fig, filename='plotly.html', auto_open=True)
 
-            # fig = go.Figure(data=[go.Scatter(x=self.data['x'], y=self.data['y'])])
-            # fig.update_layout(title='График с помощью Plotly', xaxis_title='x', yaxis_title='y')
-            # pyo.plot(fig, filename='plot.html', auto_open=True)
+            # fig = go.Figure(data=[go.Scatter(x=self.data['x'], y=se
 
     # Функция для визуализации данных с помощью библиотеки Bokeh
     def plot_bokeh(self):
         if self.data is not None:
             # Построение графика
-
-            x = standard_normal(50000)
-            y = standard_normal(50000)
-            #x = self.data['x']
-            #y = self.data['y']
-            for item in x:
-                print(item)
+            #x = standard_normal(50000)
+            x = self.data['x']
+            #y = standard_normal(50000)
+            y = self.data['y']
+            #for item in x:
+                #print(item)
 
             bins = hexbin(x, y, 0.1)
 
